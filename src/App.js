@@ -3,11 +3,14 @@ import styled from "styled-components";
 import { FixedSizeList as List } from "react-window";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTransition, animated } from "react-spring";
+import { useGesture } from "react-use-gesture";
+import clamp from "lodash-es/clamp";
 
-function useOutsideAlerter(ref, setStatus) {
+function useOutsideAlerter(ref, setStatus, setZoom) {
   useEffect(() => {
     function handleClickOutside(event) {
       if (ref.current && event.target === ref.current) {
+        setZoom(null);
         setStatus(false);
       }
     }
@@ -109,7 +112,6 @@ const Column = ({ index, style, data }) => {
 
 const Example = ({ images, idx, photoRef, setIdx }) => {
   useEffect(() => {
-    console.log("SCROLL TO PHOTO: ", idx, photoRef);
     idx && photoRef.current.scrollToItem(idx, "center");
   }, [idx, photoRef]);
 
@@ -131,10 +133,18 @@ const Example = ({ images, idx, photoRef, setIdx }) => {
 function App() {
   const [status, setStatus] = useState(false);
   const [images, setImages] = useState([]);
+  const [zoom, setZoom] = useState(null);
+  const [imageMove, setImageMove] = useState({ x: 0, y: 0 });
   const [idx, setIdx] = useState(null);
   const photoLocateRef = useRef();
   const wrapperRef = useRef(null);
-  useOutsideAlerter(wrapperRef, setStatus);
+  const moveRef = useRef(true);
+  useOutsideAlerter(wrapperRef, setStatus, setZoom);
+
+  useEffect(() => {
+    let browserZoomLevel = Math.round(window.devicePixelRatio * 100);
+    console.log(browserZoomLevel);
+  });
 
   useEffect(() => {
     function fetchImages() {
@@ -155,11 +165,63 @@ function App() {
   }, [status]);
 
   const onClick = useCallback(() => setIdx((indexNo) => indexNo + 1), []);
-  console.log("HERE IS images[idx]", images[idx]);
+  const onClickLeft = useCallback(() => setIdx((indexNo) => indexNo - 1), []);
+
+  const bind = useGesture({
+    onDrag: ({
+      active,
+      movement: [mx],
+      direction: [xDir],
+      distance,
+      offset: [dx, dy],
+      cancel,
+    }) => {
+      if (
+        active &&
+        distance > 0 &&
+        moveRef.current &&
+        Math.round(window.devicePixelRatio * 100) <= zoom
+      ) {
+        moveRef.current = false;
+        cancel(
+          setIdx((c) => {
+            return clamp(c + (xDir > 0 ? -1 : 1), 0, images.length - 1);
+          })
+        );
+      }
+      if (active && Math.round(window.devicePixelRatio * 100) > zoom) {
+        setImageMove({ x: dx, y: dy });
+      }
+      if (!active) {
+        moveRef.current = true;
+      }
+      return;
+    },
+    onWheel: ({ wheeling, direction: [xdir, ydir] }) =>
+      wheeling &&
+      Math.round(window.devicePixelRatio * 100) <= zoom &&
+      setIdx((c) => {
+        return clamp(c + ydir, 0, images.length - 1);
+      }),
+    onPinch: (x) => console.log(x),
+  });
+
+  const bind2 = useGesture({
+    onDrag: ({
+      active,
+      movement: [mx],
+      direction: [xDir],
+      distance,
+      offset: [dx, dy],
+      cancel,
+    }) => {
+      setImageMove({ x: dx, y: dy });
+    },
+  });
+
   const transitions = useTransition(
     images[idx],
     (item) => {
-      console.log(item);
       return item && item.id;
     },
     {
@@ -176,6 +238,7 @@ function App() {
           <Button
             key={i}
             onClick={() => {
+              setZoom(Math.round(window.devicePixelRatio * 100));
               setIdx(i);
               setStatus((c) => !c);
             }}
@@ -187,12 +250,14 @@ function App() {
 
       {status && (
         <Overlay>
-          <LightBoxWrapper ref={wrapperRef}>
+          <LightBoxWrapper
+            style={{ left: imageMove.x, top: imageMove.y }}
+            ref={wrapperRef}
+          >
             {transitions.map(({ item, props, key }) => {
-              console.log(item, props, key);
               return (
                 item && (
-                  <ContentWrapper>
+                  <ContentWrapper {...bind()} key={key}>
                     <LightboxImage
                       onClick={onClick}
                       key={key}
