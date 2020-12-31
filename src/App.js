@@ -61,19 +61,38 @@ const Overlay = styled.div`
 `;
 
 const LightboxImage = styled(animated.img)`
-  max-width: 800px;
-  padding: 8px;
-  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  align-self: flex-end;
 `;
 
 const LightBoxWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  display: relative;
+  position: relative;
+  margin: auto;
+  height: 97vh;
+  width: 98vw;
+  border: 1px solid red;
 `;
 
-const ContentWrapper = styled.div`
+const ContentWrapper = styled(animated.div)`
   position: absolute;
+  top: 30%; /* position the top  edge of the element at the middle of the parent */
+  left: 50%; /* position the left edge of the element at the middle of the parent */
+  transform: translate(-50%, -50%);
+  border: 1px solid purple;
+  width: 80%;
+  height: 60%;
+  display: flex;
+  text-align: center;
+  justify-content: center; /* align horizontal */
+`;
+
+const ScrollWrapper = styled.div`
+  position: absolute;
+  top: 70%; /* position the top  edge of the element at the middle of the parent */
+  left: 50%; /* position the left edge of the element at the middle of the parent */
+  transform: translate(-50%, -50%);
+  border: 1px solid purple;
 `;
 
 const PhotoScroll = styled(List)`
@@ -123,7 +142,7 @@ function App() {
         .fill(true)
         .map((_, i) => ({
           id: i,
-          url: `https://picsum.photos/200/300?random=${i}`,
+          url: `https://picsum.photos/500/500?random=${i}`,
         }));
       setImages(x);
     }
@@ -167,13 +186,13 @@ function App() {
       </PhotoGrid>
 
       {status && (
-        <Overlay ref={wrapperRef}>
-          <LightBoxWrapper>
-            <ContentWrapper>
-              {transitions.map(({ item, props, key }) => {
-                console.log(item, props, key);
-                return (
-                  item && (
+        <Overlay>
+          <LightBoxWrapper ref={wrapperRef}>
+            {transitions.map(({ item, props, key }) => {
+              console.log(item, props, key);
+              return (
+                item && (
+                  <ContentWrapper>
                     <LightboxImage
                       onClick={onClick}
                       key={key}
@@ -181,16 +200,19 @@ function App() {
                       src={item.url}
                       alt="logo"
                     />
-                  )
-                );
-              })}
-            </ContentWrapper>
-            <Example
-              photoRef={photoLocateRef}
-              setIdx={setIdx}
-              images={images}
-              idx={idx}
-            />
+                  </ContentWrapper>
+                )
+              );
+            })}
+
+            <ScrollWrapper>
+              <Example
+                photoRef={photoLocateRef}
+                setIdx={setIdx}
+                images={images}
+                idx={idx}
+              />
+            </ScrollWrapper>
           </LightBoxWrapper>
         </Overlay>
       )}
