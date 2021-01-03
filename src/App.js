@@ -3,8 +3,7 @@ import styled from "styled-components";
 import { FixedSizeList as List } from "react-window";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTransition, animated } from "react-spring";
-import { useGesture } from "react-use-gesture";
-import clamp from "lodash-es/clamp";
+import GLightbox from "glightbox";
 
 function useOutsideAlerter(ref, setStatus, setZoom) {
   useEffect(() => {
@@ -99,7 +98,7 @@ const ScrollWrapper = styled.div`
 `;
 
 const PhotoScroll = styled(List)`
-  border: 1px solid #d9dddd;
+  z-index: 9999999 !important;
 `;
 
 const Column = ({ index, style, data }) => {
@@ -137,6 +136,7 @@ function App() {
   const [imageMove, setImageMove] = useState({ x: 0, y: 0 });
   const [idx, setIdx] = useState(null);
   const photoLocateRef = useRef();
+  const lbRef = useRef();
   const wrapperRef = useRef(null);
   const moveRef = useRef(true);
   useOutsideAlerter(wrapperRef, setStatus, setZoom);
@@ -151,8 +151,9 @@ function App() {
       let x = Array(50)
         .fill(true)
         .map((_, i) => ({
+          href: `https://picsum.photos/500/500?random=${i}`,
+          type: "image",
           id: i,
-          url: `https://picsum.photos/500/500?random=${i}`,
         }));
       setImages(x);
     }
@@ -164,72 +165,21 @@ function App() {
     !status && (document.body.style.overflow = "unset");
   }, [status]);
 
-  const onClick = useCallback(() => setIdx((indexNo) => indexNo + 1), []);
-  const onClickLeft = useCallback(() => setIdx((indexNo) => indexNo - 1), []);
-
-  const bind = useGesture({
-    onDrag: ({
-      active,
-      movement: [mx],
-      direction: [xDir],
-      distance,
-      offset: [dx, dy],
-      cancel,
-    }) => {
-      if (
-        active &&
-        distance > 0 &&
-        moveRef.current &&
-        Math.round(window.devicePixelRatio * 100) <= zoom
-      ) {
-        moveRef.current = false;
-        cancel(
-          setIdx((c) => {
-            return clamp(c + (xDir > 0 ? -1 : 1), 0, images.length - 1);
-          })
-        );
-      }
-      if (active && Math.round(window.devicePixelRatio * 100) > zoom) {
-        setImageMove({ x: dx, y: dy });
-      }
-      if (!active) {
-        moveRef.current = true;
-      }
-      return;
-    },
-    onWheel: ({ wheeling, direction: [xdir, ydir] }) =>
-      wheeling &&
-      Math.round(window.devicePixelRatio * 100) <= zoom &&
-      setIdx((c) => {
-        return clamp(c + ydir, 0, images.length - 1);
-      }),
-    onPinch: (x) => console.log(x),
+  const myGallery = GLightbox({
+    touchNavigation: true,
+    elements: images,
+    autoplayVideos: false,
+    closeOnOutsideClick: true,
   });
-
-  const bind2 = useGesture({
-    onDrag: ({
-      active,
-      movement: [mx],
-      direction: [xDir],
-      distance,
-      offset: [dx, dy],
-      cancel,
-    }) => {
-      setImageMove({ x: dx, y: dy });
-    },
+  const openLb = (x) => {
+    myGallery.openAt(x);
+  };
+  myGallery.on("open", (e) => {
+    console.log("IT WAS CALLED!! ", e);
   });
-
-  const transitions = useTransition(
-    images[idx],
-    (item) => {
-      return item && item.id;
-    },
-    {
-      from: { opacity: 0 },
-      enter: { opacity: 1 },
-      leave: { opacity: 0 },
-    }
-  );
+  myGallery.on("close", (e) => {
+    setStatus(false);
+  });
 
   return (
     <div className="App">
@@ -238,51 +188,15 @@ function App() {
           <Button
             key={i}
             onClick={() => {
-              setZoom(Math.round(window.devicePixelRatio * 100));
-              setIdx(i);
-              setStatus((c) => !c);
+              setStatus(true);
+              openLb(i);
             }}
           >
-            <GridImage src={x.url} alt="logo" />
+            <GridImage src={x.href} alt="logo" />
           </Button>
         ))}
       </PhotoGrid>
-
-      {status && (
-        <Overlay>
-          <LightBoxWrapper
-            style={{ left: imageMove.x, top: imageMove.y }}
-            ref={wrapperRef}
-          >
-            {transitions.map(({ item, props, key }) => {
-              return (
-                item && (
-                  <ContentWrapper {...bind()} key={key}>
-                    <LightboxImage
-                      onClick={onClick}
-                      key={key}
-                      style={props}
-                      src={item.url}
-                      alt="logo"
-                    />
-                  </ContentWrapper>
-                )
-              );
-            })}
-
-            <ScrollWrapper>
-              <Example
-                photoRef={photoLocateRef}
-                setIdx={setIdx}
-                images={images}
-                idx={idx}
-              />
-            </ScrollWrapper>
-          </LightBoxWrapper>
-        </Overlay>
-      )}
     </div>
   );
 }
-
 export default App;
