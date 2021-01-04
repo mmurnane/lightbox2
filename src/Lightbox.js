@@ -137,6 +137,7 @@ function Lightbox(props) {
         direction: [xDir],
         distance,
         offset: [x, y],
+        event,
         cancel,
       }) => {
         console.log("DRAG INITIATED: ", zoomState.scale);
@@ -148,6 +149,7 @@ function Lightbox(props) {
           );
         }
         if (active && zoomState.scale > 1) {
+          event.preventDefault();
           console.log("GETTING HERE: ", x, y);
           dispatch({ type: "pan", x, y });
         }
@@ -183,10 +185,7 @@ function Lightbox(props) {
   );
   return (
     <Overlay ref={lightboxZoomRef}>
-      <LightBoxWrapper
-        ref={wrapperRef}
-        //style={{  }}
-      >
+      <LightBoxWrapper ref={wrapperRef}>
         {transitions.map(({ item, props, key }) => {
           return (
             item && (
