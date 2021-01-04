@@ -159,9 +159,10 @@ function Lightbox(props) {
         setIdx((c) => {
           return clamp(c + ydir, 0, images.length - 1);
         }),
-      onPinch: ({ offset: [d] }) => {
+      onPinch: ({ event, offset: [d] }) => {
         console.log("Pinch Detected");
-        let zoomCalc = Math.max(1 + d / 50, 1);
+        event.preventDefault();
+        let zoomCalc = Math.max(1 + d / 100, 1);
         zoomCalc === 1 && dispatch({ type: "reset" });
         zoomCalc !== 1 && dispatch({ type: "zoom", scale: zoomCalc });
         return;
