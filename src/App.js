@@ -44,7 +44,7 @@ function App() {
         .fill(true)
         .map((_, i) => ({
           id: i,
-          url: `https://picsum.photos/500/500?random=${i}`,
+          url: `https://picsum.photos/600/400?random=${i}`,
         }));
       setImages(x);
     }

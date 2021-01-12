@@ -24,6 +24,17 @@ const Overlay = styled.div`
   transition: 0.5s;
 `;
 
+const XItem = styled.div`
+  top: 15px;
+  right: 20px;
+  cursor: pointer;
+  position: absolute;
+  width: 18px;
+  height: auto;
+  color: white;
+  font-size: 24px;
+`;
+
 const LightboxImage = styled(animated.img)`
   align-self: flex-end;
   max-width: 100%;
@@ -35,15 +46,13 @@ const LightBoxWrapper = styled.div`
   margin: auto;
   height: 97vh;
   width: 98vw;
-  border: 1px solid red;
 `;
 
 const ContentWrapper = styled(animated.div)`
   position: absolute;
-  top: 30%; /* position the top  edge of the element at the middle of the parent */
+  top: 35%; /* position the top  edge of the element at the middle of the parent */
   left: 50%; /* position the left edge of the element at the middle of the parent */
   transform: translate(-50%, -50%);
-  border: 1px solid purple;
   width: 80%;
   height: 60%;
   display: flex;
@@ -53,10 +62,9 @@ const ContentWrapper = styled(animated.div)`
 
 const ScrollWrapper = styled.div`
   position: absolute;
-  top: 70%; /* position the top  edge of the element at the middle of the parent */
+  top: 80%; /* position the top  edge of the element at the middle of the parent */
   left: 50%; /* position the left edge of the element at the middle of the parent */
   transform: translate(-50%, -50%);
-  border: 1px solid purple;
 `;
 
 const PhotoScroll = styled(List)`
@@ -127,6 +135,31 @@ function Lightbox(props) {
   const wrapperRef = useRef();
   const lightboxZoomRef = useRef();
 
+  const handleUserKeyPress = useCallback((event) => {
+    const { key, keyCode } = event;
+
+    if (keyCode === 37) {
+      setIdx((c) => {
+        return clamp(c - 1, 0, images.length - 1);
+      });
+    }
+    if (keyCode === 39) {
+      setIdx((c) => {
+        return clamp(c + 1, 0, images.length - 1);
+      });
+    }
+    if (keyCode === 27) {
+      setStatus(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleUserKeyPress);
+
+    return () => {
+      window.removeEventListener("keydown", handleUserKeyPress);
+    };
+  }, [handleUserKeyPress]);
   useOutsideAlerter(wrapperRef, setStatus, setZoom);
   const onClick = useCallback(() => setIdx((indexNo) => indexNo + 1), []);
 
@@ -134,17 +167,20 @@ function Lightbox(props) {
     {
       onDrag: ({
         active,
-        direction: [xDir],
+        direction: [xDir, yDir],
         distance,
         offset: [x, y],
         event,
         cancel,
       }) => {
-        console.log("DRAG INITIATED: ", zoomState.scale);
         if (active && distance > 0 && zoomState.scale === 1) {
+          console.log("Y DIR:", yDir);
           cancel(
             setIdx((c) => {
-              return clamp(c + (xDir > 0 ? -1 : 1), 0, images.length - 1);
+              return (
+                Math.abs(yDir) < 0.5 &&
+                clamp(c + (xDir > 0 ? -1 : 1), 0, images.length - 1)
+              );
             })
           );
         }
@@ -155,12 +191,6 @@ function Lightbox(props) {
         }
         return;
       },
-      onWheel: ({ wheeling, direction: [xdir, ydir] }) =>
-        wheeling &&
-        zoomState.scale === 1 &&
-        setIdx((c) => {
-          return clamp(c + ydir, 0, images.length - 1);
-        }),
       onPinch: ({ event, offset: [d] }) => {
         console.log("Pinch Detected");
         event.preventDefault();
@@ -170,7 +200,16 @@ function Lightbox(props) {
         return;
       },
     },
-    { domTarget: lightboxZoomRef, eventOptions: { passive: false } }
+    {
+      domTarget: lightboxZoomRef,
+      eventOptions: { passive: false },
+      drag: {
+        ...(zoomState.scale === 1 && {
+          axis: "x",
+          bounds: { left: -100, right: 100, top: -50, bottom: 50 },
+        }),
+      },
+    }
   );
 
   const transitions = useTransition(
@@ -185,7 +224,18 @@ function Lightbox(props) {
     }
   );
   return (
-    <Overlay ref={lightboxZoomRef}>
+    <Overlay
+      ref={lightboxZoomRef}
+      tabIndex={-1}
+      onKeyDown={(e) => handleUserKeyPress(e)}
+    >
+      <XItem
+        onClick={() => {
+          setStatus(false);
+        }}
+      >
+        X
+      </XItem>
       <LightBoxWrapper ref={wrapperRef}>
         {transitions.map(({ item, props, key }) => {
           return (
@@ -195,7 +245,9 @@ function Lightbox(props) {
                   style={{
                     ...props,
                     touchAction: "none",
-                    transform: `scale(${zoomState.scale}) translate(${zoomState.x}px, ${zoomState.y}px)`,
+                    transform: `scale(${zoomState.scale}) translate(${
+                      Math.abs(zoomState.x) < 150 && zoomState.x
+                    }px, ${Math.abs(zoomState.y) < 150 && zoomState.y}px)`,
                   }}
                   /*  onClick={onClick} */
                   key={key}
