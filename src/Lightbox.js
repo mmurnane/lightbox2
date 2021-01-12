@@ -39,6 +39,7 @@ const LightboxImage = styled(animated.img)`
   align-self: flex-end;
   max-width: 100%;
   max-height: 100%;
+  overflow: "hidden";
 `;
 
 const LightBoxWrapper = styled.div`
@@ -71,11 +72,11 @@ const PhotoScroll = styled(List)`
   border: 1px solid #d9dddd;
 `;
 
-function useOutsideAlerter(ref, setStatus, setZoom) {
+function useOutsideAlerter(ref, setStatus, dispatch) {
   useEffect(() => {
     function handleClickOutside(event) {
       if (ref.current && event.target === ref.current) {
-        setZoom(1);
+        dispatch({ type: "reset" });
         setStatus(false);
       }
     }
@@ -83,7 +84,7 @@ function useOutsideAlerter(ref, setStatus, setZoom) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [ref, setStatus, setZoom]);
+  }, [ref, setStatus, dispatch]);
 }
 
 const Column = ({ index, style, data }) => {
@@ -129,7 +130,6 @@ function reducer(state, action) {
 
 function Lightbox(props) {
   const { idx, setIdx, images, setStatus } = props;
-  const [zoom, setZoom] = useState(1);
   const [zoomState, dispatch] = useReducer(reducer, { x: 0, y: 0, scale: 1 });
   const photoLocateRef = useRef();
   const wrapperRef = useRef();
@@ -160,8 +160,7 @@ function Lightbox(props) {
       window.removeEventListener("keydown", handleUserKeyPress);
     };
   }, [handleUserKeyPress]);
-  useOutsideAlerter(wrapperRef, setStatus, setZoom);
-  const onClick = useCallback(() => setIdx((indexNo) => indexNo + 1), []);
+  useOutsideAlerter(wrapperRef, setStatus, dispatch);
 
   useGesture(
     {
@@ -204,9 +203,11 @@ function Lightbox(props) {
       domTarget: lightboxZoomRef,
       eventOptions: { passive: false },
       drag: {
+        bounds: { left: -100, right: 100, top: -100, bottom: 100 },
         ...(zoomState.scale === 1 && {
           axis: "x",
-          bounds: { left: -100, right: 100, top: -50, bottom: 50 },
+          filterTaps: true,
+          delay: 1000,
         }),
       },
     }
@@ -245,9 +246,7 @@ function Lightbox(props) {
                   style={{
                     ...props,
                     touchAction: "none",
-                    transform: `scale(${zoomState.scale}) translate(${
-                      Math.abs(zoomState.x) < 150 && zoomState.x
-                    }px, ${Math.abs(zoomState.y) < 150 && zoomState.y}px)`,
+                    transform: `scale(${zoomState.scale}) translate(${zoomState.x}px, ${zoomState.y}px)`,
                   }}
                   /*  onClick={onClick} */
                   key={key}
